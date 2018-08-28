@@ -4,7 +4,7 @@ __module_version__ = "1.0"
 __module_description__ = "Authenticate and autojoin channels when connecting to Rizon"
 
 class RizonHelper(object):
-	def __init__(self, password, channels = {}):
+	def __init__(self, password, channels = {}, username):
 		try:
 			import hexchat
 		except ImportError:
@@ -12,11 +12,18 @@ class RizonHelper(object):
 			raise SystemExit
 		self.password = password
 		self.channels = channels
+		self.username = username
+		self.nick = self.username # An alias to username
 
-		# Verify we are actually on Rizon
-		assert hexchat.get_info("network") == "Rizon"
+	def register_event_handlers(self):
+		'''
+		Register an event handler to call a function
+		upon connecting to the server.
+		'''
 
-		# Register an event handler to call a function on connect
+		assert hexchat.get_info("network") == "Rizon" 	# Verify we are actually on Rizon
+		
+		hexchat.hook_server()
 		hexchat.hook_server("CONNECT", self.identify)
 
 
@@ -27,28 +34,39 @@ class RizonHelper(object):
 		of HexChat sends this incorrectly, 
 		which is the reason I am writing this script
 		"""
+		assert self.nick == hexchat.get_info("nick") # Ensure we are authenticating for the right account
+
 		commandString = "msg NickServ IDENTIFY {0}".format(password) # Leading forward-slash not necessary 
 		hexchat.command(commandString)
 		hexchat.prnt("Sent command to identify.")
 
-		self.join()
-
 		return hexchat.EAT_NONE # returning this value ensures the event is not consumed and other plugins can still use it
 
 	def join(self):
-		'''
+		"""
 		Auto-join a few channels on connect
-		'''
+		"""
 		for channel in self.channels.values(): hexchat.command("join {0}".format(channel))			
 
 
 if (__name__ == "__main__"):
-	from os import environ, path
+	"""
+	The NickServ password itself will be stored as an environment variable
+	called $RIZON_PASSWORD and defined in ~/.zshrc in my case or ~/.bashrc 
+	if one is using the default shell, that is, bash. The IRC nickname is stored
+	as an environment value as well.
+	"""
+	from os import environ; from os.path import exists as path_exists
 	rizon_password = environ["RIZON_PASSWORD"]
+	rizon_nick = environ["RIZON_NICK"] 
 
+	"""
+	The channels to join after connecting are stored in a flat json file
+	including a brief description
+	"""
 	from json import load as parseJSONfromFile
-	if os.path.exists('./channels.json'):
-		with open('./channels.json', 'r') as file:
+	if path_exists("./channels.json"):
+		with open("./channels.json", "r") as file:
 			channels = parseJSONfromFile(file)
 	else:
 		channels = {}
@@ -57,7 +75,10 @@ if (__name__ == "__main__"):
 	    and len(rizon_password) \
 	      and rizon_password is not None \
 	        and False not in [channel.startswith("#") for channel in channels.values()]):
-		r = RizonHelper(rizon_password, channels)
+		r = RizonHelper(rizon_password, channels, rizon_nick)
+		r.register_event_handlers()
+		r.join()
 	else:
-		raise SystemExit("Env variable $RIZON_PASSWORD is empty or not defined")
+		raise SystemExit("Environment variable $RIZON_PASSWORD is empty, undefined, the wrong type, \
+		                 or the channels.json file contains invalid data")
 
