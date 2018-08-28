@@ -4,7 +4,8 @@ __module_version__ = "1.0"
 __module_description__ = "Authenticate and autojoin channels when connecting to Rizon"
 
 class RizonHelper(object):
-	def __init__(self, password, channels = {}, username):
+
+	def __init__(self, password, channels = {}, nick = None):
 		try:
 			import hexchat
 		except ImportError:
@@ -12,8 +13,7 @@ class RizonHelper(object):
 			raise SystemExit
 		self.password = password
 		self.channels = channels
-		self.username = username
-		self.nick = self.username # An alias to username
+		self.nick = nick
 
 	def register_event_handlers(self):
 		'''
@@ -23,9 +23,8 @@ class RizonHelper(object):
 
 		assert hexchat.get_info("network") == "Rizon" 	# Verify we are actually on Rizon
 		
-		hexchat.hook_server()
-		hexchat.hook_server("CONNECT", self.identify)
-
+		hexchat.hook_server("XP_TE_CONNECT", lambda a: hexchat.prnt("Connecting event emitted."))
+		hexchat.hook_server("SERVERCONNECTED", self.identify)
 
 	def identify(self, password):
 		"""
@@ -34,13 +33,13 @@ class RizonHelper(object):
 		of HexChat sends this incorrectly, 
 		which is the reason I am writing this script
 		"""
-		assert self.nick == hexchat.get_info("nick") # Ensure we are authenticating for the right account
+		if self.nick: assert self.nick == hexchat.get_info("nick") # Ensure we are authenticating for the right account
 
 		commandString = "msg NickServ IDENTIFY {0}".format(password) # Leading forward-slash not necessary 
 		hexchat.command(commandString)
 		hexchat.prnt("Sent command to identify.")
 
-		return hexchat.EAT_NONE # returning this value ensures the event is not consumed and other plugins can still use it
+		return hexchat.EAT_NONE # Returning this value ensures the event is not consumed and other plugins can still use it
 
 	def join(self):
 		"""
