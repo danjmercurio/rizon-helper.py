@@ -1,10 +1,10 @@
 #!/usr/bin/python
 __module_name__ = "RizonHelper"
 __module_version__ = "1.0"
-__module_description__ = "Do stuff when connecting to Rizon"
+__module_description__ = "Authenticate and autojoin channels when connecting to Rizon"
 
 class RizonHelper(object):
-	def __init__(self, password, channels = []):
+	def __init__(self, password, channels = {}):
 		try:
 			import hexchat
 		except ImportError:
@@ -24,32 +24,34 @@ class RizonHelper(object):
 		"""
 		Issue the command to identify to the NickServ bot. 
 		The default auto-identify behavior
-		of hexchat sends this incorrectly, 
+		of HexChat sends this incorrectly, 
 		which is the reason I am writing this script
 		"""
-		commandString = "msg NickServ IDENTIFY {0}".format(password) #leading / not necessary 
+		commandString = "msg NickServ IDENTIFY {0}".format(password) # Leading forward-slash not necessary 
 		hexchat.command(commandString)
 		hexchat.prnt("Sent command to identify.")
 
-		# Now autojoin channels
 		self.join()
 
-		return hexchat.EAT_NONE
+		return hexchat.EAT_NONE # returning this value ensures the event is not consumed and other plugins can still use it
 
 	def join(self):
-		for channel in self.channels: hexchat.command("join {0}".format(channel))			
+		'''
+		Auto-join a few channels on connect
+		'''
+		for channel in self.channels.values(): hexchat.command("join {0}".format(channel))			
 
 
 if (__name__ == "__main__"):
-	from os import environ
-
+	from os import environ, path
 	rizon_password = environ["RIZON_PASSWORD"]
-	channels = {
-		"4chan irc": "#4chan",
-		"8chan irc": "#8chan",
-		"/g/ and /prog/":"#/g/technology",
-		"Rizon Support": "#Rizon"
-		}
+
+	from json import load as parseJSONfromFile
+	if os.path.exists('./channels.json'):
+		with open('./channels.json', 'r') as file:
+			channels = parseJSONfromFile(file)
+	else:
+		channels = {}
 
 	if (type(rizon_password) == str \
 	    and len(rizon_password) \
