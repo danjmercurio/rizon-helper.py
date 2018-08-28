@@ -21,12 +21,12 @@ class RizonHelper(object):
 		upon connecting to the server.
 		'''
 
-		assert hexchat.get_info("network") == "Rizon" 	# Verify we are actually on Rizon
+		#assert hexchat.get_info("network") == "Rizon" 	# Verify we are actually on Rizon
 		
 		hexchat.hook_server("XP_TE_CONNECT", lambda a: hexchat.prnt("Connecting event emitted."))
 		hexchat.hook_server("SERVERCONNECTED", self.identify)
 
-	def identify(self, password):
+	def identify(self):
 		"""
 		Issue the command to identify to the NickServ bot. 
 		The default auto-identify behavior
@@ -35,7 +35,7 @@ class RizonHelper(object):
 		"""
 		if self.nick: assert self.nick == hexchat.get_info("nick") # Ensure we are authenticating for the right account
 
-		commandString = "msg NickServ IDENTIFY {0}".format(password) # Leading forward-slash not necessary 
+		commandString = "msg NickServ IDENTIFY {0}".format(self.password) # Leading forward-slash not necessary 
 		hexchat.command(commandString)
 		hexchat.prnt("Sent command to identify.")
 
@@ -56,8 +56,8 @@ if (__name__ == "__main__"):
 	as an environment value as well.
 	"""
 	from os import environ; from os.path import exists as path_exists
-	rizon_password = environ["RIZON_PASSWORD"]
-	rizon_nick = environ["RIZON_NICK"] 
+	rizon_password = environ.get("RIZON_PASSWORD")
+	rizon_nick = environ.get("RIZON_NICK")
 
 	"""
 	The channels to join after connecting are stored in a flat json file
@@ -68,7 +68,7 @@ if (__name__ == "__main__"):
 		with open("./channels.json", "r") as file:
 			channels = parseJSONfromFile(file)
 	else:
-		channels = {}
+		channels = {"Rizon Support" : "#help"}
 
 	if (type(rizon_password) == str \
 	    and len(rizon_password) \
